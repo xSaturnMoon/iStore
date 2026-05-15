@@ -100,7 +100,29 @@ struct DocumentPicker: UIViewControllerRepresentable {
         
         func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
             guard let url = urls.first else { return }
-            parent.onPick(url)
+            
+            // L'URL restituito è "security-scoped", dobbiamo chiederne l'accesso
+            guard url.startAccessingSecurityScopedResource() else {
+                parent.onPick(url) // Prova comunque, ma probabilmente fallirà
+                return
+            }
+            
+            defer { url.stopAccessingSecurityScopedResource() }
+            
+            // Creiamo una copia locale temporanea sicura
+            let tempDir = FileManager.default.temporaryDirectory
+            let localURL = tempDir.appendingPathComponent(url.lastPathComponent)
+            
+            do {
+                if FileManager.default.fileExists(atPath: localURL.path) {
+                    try FileManager.default.removeItem(at: localURL)
+                }
+                try FileManager.default.copyItem(at: url, to: localURL)
+                parent.onPick(localURL)
+            } catch {
+                print("Errore copia file: \(error)")
+                parent.onPick(url) // Fallback al file originale
+            }
         }
     }
 }

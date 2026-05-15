@@ -2,6 +2,10 @@ import express from 'express';
 import cors from 'cors';
 import axios from 'axios';
 import crypto from 'crypto';
+import https from 'https';
+
+// Forza axios a ignorare gli errori di certificato (risolve problemi con antivirus/firewall)
+axios.defaults.httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
 const app = express();
 const PORT = process.env.PORT || 3000;
