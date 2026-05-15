@@ -5,6 +5,9 @@ packages:
   ZIPFoundation:
     url: https://github.com/weichsel/ZIPFoundation
     from: 0.9.0
+  Swifter:
+    url: https://github.com/httpswift/swifter.git
+    from: 1.5.0
 targets:
   iStore:
     type: application
@@ -13,6 +16,7 @@ targets:
     sources: [Sources]
     dependencies:
       - package: ZIPFoundation
+      - package: Swifter
     settings:
       INFOPLIST_FILE: Sources/Info.plist
       PRODUCT_BUNDLE_IDENTIFIER: com.xsaturnmoon.istore

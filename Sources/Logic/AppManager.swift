@@ -156,11 +156,23 @@ class AppManager: ObservableObject {
                 )
                 
                 await MainActor.run {
-                    self.statusMessage = "Installazione su iOS..."
+                    self.statusMessage = "Avvio installazione iOS..."
                     self.installationProgress = 0.9
+                    
+                    // Avviamo il server locale per servire il file all'installer iOS
+                    LocalServer.shared.start()
+                    
+                    let ipaName = "\(metadata.name)_signed.ipa"
+                    if LocalServer.shared.generateManifest(for: ipaName, bundleId: metadata.bundleId, appName: metadata.name, version: metadata.version) != nil {
+                        
+                        // Chiamiamo il protocollo ufficiale Apple per l'installazione OTA
+                        if let installURL = URL(string: "itms-services://?action=download-manifest&url=http://127.0.0.1:8080/manifest.plist") {
+                            UIApplication.shared.open(installURL)
+                        }
+                    }
                 }
                 
-                try await Task.sleep(nanoseconds: 1_000_000_000)
+                try await Task.sleep(nanoseconds: 2_000_000_000)
                 
                 await MainActor.run {
                     let newApp = AppItem(
@@ -174,7 +186,7 @@ class AppManager: ObservableObject {
                     self.saveApps()
                     
                     self.isInstalling = false
-                    self.statusMessage = "✅ Installata!"
+                    self.statusMessage = "✅ Richiesta inviata!"
                     self.installationProgress = 1.0
                 }
             } catch {
