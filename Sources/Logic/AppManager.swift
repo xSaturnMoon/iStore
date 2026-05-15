@@ -195,7 +195,8 @@ class AppManager: ObservableObject {
                 let session = try await GrandSlamAuth.authenticate(
                     appleId: appleId,
                     password: password,
-                    anisetteData: anisette
+                    anisetteData: anisette,
+                    anisetteBaseURL: anisetteUrl
                 )
                 
                 await MainActor.run {
@@ -225,7 +226,8 @@ class AppManager: ObservableObject {
                 let session = try await GrandSlamAuth.verify2FA(
                     code: code,
                     sessionId: ticket,
-                    anisetteData: anisette
+                    anisetteData: anisette,
+                    anisetteBaseURL: anisetteUrl
                 )
                 
                 // Ricrea la sessione con l'Apple ID corretto
