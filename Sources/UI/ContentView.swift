@@ -9,6 +9,19 @@ struct ContentView: View {
             Color(UIColor.systemGray6)
                 .ignoresSafeArea()
             
+            // COLOR BLOBS (Per far risaltare il vetro)
+            Circle()
+                .fill(Color.blue.opacity(0.3))
+                .frame(width: 300)
+                .blur(radius: 70)
+                .offset(x: -150, y: 100)
+            
+            Circle()
+                .fill(Color.purple.opacity(0.3))
+                .frame(width: 300)
+                .blur(radius: 70)
+                .offset(x: 150, y: 300)
+            
             // CONTENUTO PRINCIPALE
             VStack {
                 Spacer()
