@@ -1,77 +1,78 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var selectedSection: String = "Apps"
+    @State private var selectedTab: Int = 1
     
     var body: some View {
-        ZStack {
-            // Sfondo Grigio Apple (System Gray)
+        ZStack(alignment: .bottom) {
+            // SFONDO GRIGIO APPLE
             Color(UIColor.systemGray6)
                 .ignoresSafeArea()
             
-            HStack(spacing: 0) {
-                // SIDEBAR GLASS
-                VStack(alignment: .leading, spacing: 20) {
-                    Text("iStore")
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
-                        .padding(.bottom, 30)
-                        .foregroundStyle(.primary)
-                    
-                    SidebarButton(title: "Install", icon: "plus.circle.fill", isSelected: selectedSection == "Install") {
-                        selectedSection = "Install"
-                    }
-                    
-                    SidebarButton(title: "Apps", icon: "square.grid.2x2.fill", isSelected: selectedSection == "Apps") {
-                        selectedSection = "Apps"
-                    }
-                    
-                    SidebarButton(title: "Settings", icon: "gearshape.fill", isSelected: selectedSection == "Settings") {
-                        selectedSection = "Settings"
-                    }
-                    
-                    Spacer()
-                }
-                .padding(.top, 50)
-                .padding(.horizontal, 20)
-                .frame(width: 250)
-                // --- EFFETTO VETRO UFFICIALE ---
-                .background(.ultraThinMaterial)
-                // ------------------------------
-                
-                // Area Contenuto Principale
-                VStack {
-                    Spacer()
-                    Text(selectedSection)
-                        .font(.largeTitle.bold())
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                .frame(maxWidth: .infinity)
+            // CONTENUTO PRINCIPALE
+            VStack {
+                Spacer()
+                Text(tabName(for: selectedTab))
+                    .font(.system(size: 34, weight: .bold, design: .rounded))
+                    .foregroundStyle(.secondary)
+                Spacer()
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            
+            // TAB BAR FLUTTUANTE (GLASS UFFICIALE)
+            HStack(spacing: 40) {
+                TabButton(icon: "plus.circle.fill", label: "Install", isSelected: selectedTab == 0) {
+                    selectedTab = 0
+                }
+                
+                TabButton(icon: "square.grid.2x2.fill", label: "Apps", isSelected: selectedTab == 1) {
+                    selectedTab = 1
+                }
+                
+                TabButton(icon: "gearshape.fill", label: "Settings", isSelected: selectedTab == 2) {
+                    selectedTab = 2
+                }
+            }
+            .padding(.vertical, 12)
+            .padding(.horizontal, 25)
+            // --- EFFETTO VETRO APPLE ---
+            .background(.ultraThinMaterial, in: Capsule())
+            // ---------------------------
+            .overlay(
+                Capsule()
+                    .stroke(.white.opacity(0.15), lineWidth: 0.5)
+            )
+            .shadow(color: .black.opacity(0.1), radius: 20, x: 0, y: 10)
+            .padding(.bottom, 20) // La facciamo fluttuare
+        }
+    }
+    
+    func tabName(for index: Int) -> String {
+        switch index {
+        case 0: return "Install"
+        case 1: return "Apps"
+        case 2: return "Settings"
+        default: return ""
         }
     }
 }
 
-struct SidebarButton: View {
-    let title: String
+struct TabButton: View {
     let icon: String
+    let label: String
     let isSelected: Bool
     let action: () -> Void
     
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 12) {
+            VStack(spacing: 4) {
                 Image(systemName: icon)
-                    .font(.system(size: 20))
-                Text(title)
-                    .font(.system(size: 18, weight: .medium))
+                    .font(.system(size: 22))
+                Text(label)
+                    .font(.caption2)
             }
-            .padding(.vertical, 12)
-            .padding(.horizontal, 16)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(isSelected ? Color.blue.opacity(0.15) : Color.clear)
-            .foregroundStyle(isSelected ? .blue : .primary)
-            .cornerRadius(12)
+            .foregroundStyle(isSelected ? .blue : .primary.opacity(0.6))
+            .frame(width: 50)
         }
         .buttonStyle(.plain)
     }
