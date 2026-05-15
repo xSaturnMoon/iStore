@@ -69,7 +69,7 @@ struct InstallView: View {
                     Image(systemName: manager.isInstalling ? "gearshape.2.fill" : "arrow.down.doc.fill")
                         .font(.system(size: 56, weight: .light))
                         .foregroundStyle(.blue)
-                        .symbolEffect(.rotate, isActive: manager.isInstalling)
+                        .symbolEffect(.pulse, isActive: manager.isInstalling)
                     
                     Text(manager.isInstalling ? "Elaborazione..." : "Seleziona .ipa")
                         .font(.headline)
