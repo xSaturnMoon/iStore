@@ -37,19 +37,27 @@ struct InstallView: View {
             }
             
             if manager.isInstalling {
-                VStack(spacing: 10) {
+                VStack(spacing: 12) {
                     ProgressView(value: manager.installationProgress, total: 1.0)
                         .progressViewStyle(.linear)
                         .tint(.blue)
                         .padding(.horizontal, 50)
                     
-                    Text("Installazione in corso... \(Int(manager.installationProgress * 100))%")
+                    Text(manager.statusMessage)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
+                        .transition(.opacity)
                 }
             }
-            
-            Spacer()
+        }
+        .alert("Errore", isPresented: Binding(
+            get: { manager.errorMessage != nil },
+            set: { _ in manager.errorMessage = nil }
+        )) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(manager.errorMessage ?? "")
+        }
             
             // Pulsante Sfoglia
             Button {

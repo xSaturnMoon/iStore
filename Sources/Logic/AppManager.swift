@@ -15,6 +15,8 @@ class AppManager: ObservableObject {
     @Published var installedApps: [AppItem] = []
     @Published var isInstalling: Bool = false
     @Published var installationProgress: Double = 0.0
+    @Published var errorMessage: String?
+    @Published var statusMessage: String = ""
     
     init() {
         // Inizialmente vuoto, caricherai tu le tue app vere
@@ -23,25 +25,28 @@ class AppManager: ObservableObject {
     
     func installIPA(at url: URL) {
         isInstalling = true
+        errorMessage = nil
+        statusMessage = "Apertura file IPA..."
         installationProgress = 0.1
         
-        // Eseguiamo il parsing in background per non bloccare la UI
         DispatchQueue.global(qos: .userInitiated).async {
+            DispatchQueue.main.async { self.statusMessage = "Analisi metadati..." }
+            
             if let metadata = IPAParser.parse(at: url) {
                 DispatchQueue.main.async {
+                    self.statusMessage = "Preparazione installazione..."
                     self.installationProgress = 0.5
                     
-                    // Qui aggiungiamo l'app reale alla lista
                     let newApp = AppItem(
                         name: metadata.name,
                         bundleId: metadata.bundleId,
                         version: metadata.version,
-                        iconName: "app.badge.fill", // In futuro estrarremo anche l'icona
+                        iconName: "app.badge.fill",
                         daysRemaining: 7
                     )
                     
-                    // Simuliamo la fine dell'installazione
                     Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { _ in
+                        self.statusMessage = "Completato!"
                         self.installedApps.append(newApp)
                         self.isInstalling = false
                         self.installationProgress = 1.0
@@ -50,7 +55,7 @@ class AppManager: ObservableObject {
             } else {
                 DispatchQueue.main.async {
                     self.isInstalling = false
-                    // Qui potremmo mostrare un errore
+                    self.errorMessage = "Impossibile leggere il file IPA. Assicurati che sia un file valido."
                 }
             }
         }
