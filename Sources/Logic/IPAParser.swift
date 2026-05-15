@@ -26,7 +26,7 @@ class IPAParser {
             // Copiamo l'IPA localmente per evitare problemi di permessi sandbox
             try fileManager.copyItem(at: url, to: localIpaURL)
             
-            guard let archive = Archive(url: localIpaURL, accessMode: .read) else {
+            guard let archive = try? Archive(url: localIpaURL, accessMode: .read) else {
                 return .failure(IPAParserError.invalidArchive)
             }
             

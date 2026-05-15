@@ -106,13 +106,21 @@ class AppManager: ObservableObject {
         self.installationProgress = 0.1
         
         Task {
-            // Correzione label: 'at' invece di 'ipaURL'
             let report = SecurityScanner.scan(at: url)
-            let metadata = IPAParser.parse(ipaURL: url)
+            let metadataResult = IPAParser.parse(at: url)
             
             await MainActor.run {
                 self.pendingIpaURL = url
-                self.pendingMetadata = metadata
+                
+                switch metadataResult {
+                case .success(let meta):
+                    self.pendingMetadata = meta
+                case .failure(let error):
+                    self.lastError = "Errore IPA: \(error.localizedDescription)"
+                    self.isInstalling = false
+                    return
+                }
+                
                 self.securityReport = report
                 self.installationProgress = 0.3
                 
@@ -135,8 +143,7 @@ class AppManager: ObservableObject {
         
         Task {
             do {
-                // Aggiunta parametri mancanti a SigningEngine.sign
-                let signedIPA = try await SigningEngine.sign(
+                _ = try await SigningEngine.sign(
                     ipaURL: url,
                     metadata: metadata,
                     session: session,
@@ -156,7 +163,13 @@ class AppManager: ObservableObject {
                 try await Task.sleep(nanoseconds: 1_000_000_000)
                 
                 await MainActor.run {
-                    let newApp = AppItem(name: metadata.name, bundleId: metadata.bundleId, version: metadata.version, daysRemaining: 7)
+                    let newApp = AppItem(
+                        name: metadata.name,
+                        bundleId: metadata.bundleId,
+                        version: metadata.version,
+                        iconName: "AppIcon",
+                        daysRemaining: 7
+                    )
                     self.installedApps.append(newApp)
                     self.saveApps()
                     
@@ -176,7 +189,6 @@ class AppManager: ObservableObject {
     // MARK: - Funzioni UI
     
     func refreshAll() {
-        // Simula il refresh dei giorni rimanenti
         for i in 0..<installedApps.count {
             installedApps[i].daysRemaining = 7
         }

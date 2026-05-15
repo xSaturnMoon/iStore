@@ -58,7 +58,7 @@ class SecurityScanner {
             let localIpa = tempURL.appendingPathComponent("scan.ipa")
             try fileManager.copyItem(at: url, to: localIpa)
             
-            guard let archive = Archive(url: localIpa, accessMode: .read) else {
+            guard let archive = try? Archive(url: localIpa, accessMode: .read) else {
                 return SecurityReport(overallRisk: .danger, findings: [
                     SecurityFinding(risk: .danger, title: "Archivio non valido", description: "Il file IPA non può essere letto. Potrebbe essere corrotto o manomesso.")
                 ])

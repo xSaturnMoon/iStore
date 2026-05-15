@@ -42,7 +42,7 @@ class SigningEngine {
         try fileManager.copyItem(at: ipaURL, to: localIPA)
         
         progress(0.2, "Apertura archivio...")
-        guard let archive = Archive(url: localIPA, accessMode: .read) else {
+        guard let archive = try? Archive(url: localIPA, accessMode: .read) else {
             throw SigningError.archiveError
         }
         
@@ -88,7 +88,7 @@ class SigningEngine {
         // Ricomprime tutto in un nuovo IPA
         let outputURL = workDir.appendingPathComponent("signed_\(metadata.name).ipa")
         
-        guard let outputArchive = Archive(url: outputURL, accessMode: .create) else {
+        guard let outputArchive = try? Archive(url: outputURL, accessMode: .create) else {
             throw SigningError.archiveError
         }
         
