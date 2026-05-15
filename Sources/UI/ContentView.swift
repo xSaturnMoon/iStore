@@ -5,34 +5,39 @@ struct ContentView: View {
     
     var body: some View {
         ZStack(alignment: .bottom) {
-            // SFONDO GRIGIO APPLE
-            Color(UIColor.systemGray6)
+            // SFONDO GRIGIO SCURO (Migliora il contrasto del vetro)
+            Color(red: 0.05, green: 0.05, blue: 0.07)
                 .ignoresSafeArea()
             
-            // COLOR BLOBS (Per far risaltare il vetro)
-            Circle()
-                .fill(Color.blue.opacity(0.3))
-                .frame(width: 300)
-                .blur(radius: 70)
-                .offset(x: -150, y: 100)
-            
-            Circle()
-                .fill(Color.purple.opacity(0.3))
-                .frame(width: 300)
-                .blur(radius: 70)
-                .offset(x: 150, y: 300)
+            // COLOR BLOBS ANIMATI (Fondamentali per vedere l'effetto vetro)
+            Group {
+                Circle()
+                    .fill(Color.blue)
+                    .frame(width: 400)
+                    .blur(radius: 100)
+                    .offset(x: -150, y: 100)
+                    .opacity(0.4)
+                
+                Circle()
+                    .fill(Color.purple)
+                    .frame(width: 400)
+                    .blur(radius: 100)
+                    .offset(x: 150, y: -100)
+                    .opacity(0.4)
+            }
             
             // CONTENUTO PRINCIPALE
             VStack {
                 Spacer()
                 Text(tabName(for: selectedTab))
-                    .font(.system(size: 34, weight: .bold, design: .rounded))
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 40, weight: .black, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.8))
+                    .shadow(radius: 10)
                 Spacer()
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             
-            // TAB BAR FLUTTUANTE (GLASS UFFICIALE)
+            // --- TAB BAR "TRUE GLASS" ---
             HStack(spacing: 40) {
                 TabButton(icon: "plus.circle.fill", label: "Install", isSelected: selectedTab == 0) {
                     selectedTab = 0
@@ -46,17 +51,21 @@ struct ContentView: View {
                     selectedTab = 2
                 }
             }
-            .padding(.vertical, 12)
-            .padding(.horizontal, 25)
-            // --- EFFETTO VETRO APPLE ---
-            .background(.ultraThinMaterial, in: Capsule())
-            // ---------------------------
+            .padding(.vertical, 16)
+            .padding(.horizontal, 30)
+            // L'effetto segreto: ultraThinMaterial con saturazione forzata
+            .background(.ultraThinMaterial)
+            .clipShape(Capsule())
             .overlay(
                 Capsule()
-                    .stroke(.white.opacity(0.15), lineWidth: 0.5)
+                    .stroke(
+                        LinearGradient(colors: [.white.opacity(0.5), .white.opacity(0.1)], startPoint: .topLeading, endPoint: .bottomTrailing),
+                        lineWidth: 1
+                    )
             )
-            .shadow(color: .black.opacity(0.1), radius: 20, x: 0, y: 10)
-            .padding(.bottom, 20) // La facciamo fluttuare
+            .shadow(color: .black.opacity(0.3), radius: 30, x: 0, y: 15)
+            .padding(.bottom, 40)
+            // ---------------------------
         }
     }
     
@@ -80,12 +89,12 @@ struct TabButton: View {
         Button(action: action) {
             VStack(spacing: 4) {
                 Image(systemName: icon)
-                    .font(.system(size: 22))
+                    .font(.system(size: 24))
                 Text(label)
-                    .font(.caption2)
+                    .font(.system(size: 10, weight: .bold))
             }
-            .foregroundStyle(isSelected ? .blue : .primary.opacity(0.6))
-            .frame(width: 50)
+            .foregroundStyle(isSelected ? .blue : .white.opacity(0.5))
+            .shadow(color: isSelected ? .blue.opacity(0.5) : .clear, radius: 10)
         }
         .buttonStyle(.plain)
     }
