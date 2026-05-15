@@ -49,15 +49,8 @@ struct InstallView: View {
                         .transition(.opacity)
                 }
             }
-        }
-        .alert("Errore", isPresented: Binding(
-            get: { manager.errorMessage != nil },
-            set: { _ in manager.errorMessage = nil }
-        )) {
-            Button("OK", role: .cancel) { }
-        } message: {
-            Text(manager.errorMessage ?? "")
-        }
+            
+            Spacer()
             
             // Pulsante Sfoglia
             Button {
@@ -77,6 +70,14 @@ struct InstallView: View {
             }
             .padding(.bottom, 100)
         }
+        .alert("Errore", isPresented: Binding(
+            get: { manager.errorMessage != nil },
+            set: { _ in manager.errorMessage = nil }
+        )) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(manager.errorMessage ?? "")
+        }
         .fileImporter(
             isPresented: $showFilePicker,
             allowedContentTypes: [UTType(filenameExtension: "ipa")!],
@@ -85,7 +86,6 @@ struct InstallView: View {
             switch result {
             case .success(let urls):
                 if let url = urls.first {
-                    // Chiediamo l'accesso al file (necessario per iOS)
                     if url.startAccessingSecurityScopedResource() {
                         manager.installIPA(at: url)
                         url.stopAccessingSecurityScopedResource()
