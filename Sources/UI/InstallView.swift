@@ -70,7 +70,7 @@ struct InstallView: View {
             .padding(.bottom, 100)
         }
         .fileImporter(
-            isPresented: &showFilePicker,
+            isPresented: $showFilePicker,
             allowedContentTypes: [UTType(filenameExtension: "ipa")!],
             allowsMultipleSelection: false
         ) { result in
