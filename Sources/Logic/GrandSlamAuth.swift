@@ -1,7 +1,29 @@
 import Foundation
 
+enum GrandSlamError: LocalizedError {
+    case invalidCredentials
+    case twoFactorRequired(ticket: String)
+    case serverError(Int, String)
+    case networkError(String)
+    case proxyUnreachable
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidCredentials:
+            return "Apple ID o password errati.\n\nSe hai 2FA attiva, usa una Password App:\n1. Vai su appleid.apple.com\n2. Sicurezza → Password per le app\n3. Generane una e usala qui"
+        case .twoFactorRequired:
+            return "Inserisci il codice 2FA ricevuto."
+        case .serverError(let code, let msg):
+            return "Errore (\(code)): \(msg)"
+        case .networkError(let msg):
+            return "Errore di rete: \(msg)"
+        case .proxyUnreachable:
+            return "Proxy di autenticazione non raggiungibile.\n\nVerifica che l'URL del proxy sia configurato correttamente nelle Impostazioni."
+        }
+    }
+}
+
 class GrandSlamAuth {
-    // Usiamo la stessa sessione rilassata definita per bypassare errori TLS/SSL locali
     private static let session = URLSession(configuration: .default, delegate: NetworkDelegate(), delegateQueue: nil)
     
     static func authenticate(
@@ -30,7 +52,6 @@ class GrandSlamAuth {
         
         let (data, response): (Data, URLResponse)
         do {
-            // Usiamo la sessione con delegate per ignorare errori TLS
             (data, response) = try await session.data(for: request)
         } catch {
             throw GrandSlamError.proxyUnreachable
