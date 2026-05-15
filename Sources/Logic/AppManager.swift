@@ -26,16 +26,17 @@ class AppManager: ObservableObject {
     func installIPA(at url: URL) {
         isInstalling = true
         errorMessage = nil
-        statusMessage = "Apertura file IPA..."
+        statusMessage = "Copia file in corso..."
         installationProgress = 0.1
         
         DispatchQueue.global(qos: .userInitiated).async {
-            DispatchQueue.main.async { self.statusMessage = "Analisi metadati..." }
+            let result = IPAParser.parse(at: url)
             
-            if let metadata = IPAParser.parse(at: url) {
-                DispatchQueue.main.async {
-                    self.statusMessage = "Preparazione installazione..."
-                    self.installationProgress = 0.5
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let metadata):
+                    self.statusMessage = "Firma in corso..."
+                    self.installationProgress = 0.6
                     
                     let newApp = AppItem(
                         name: metadata.name,
@@ -45,17 +46,25 @@ class AppManager: ObservableObject {
                         daysRemaining: 7
                     )
                     
-                    Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { _ in
-                        self.statusMessage = "Completato!"
+                    Timer.scheduledTimer(withTimeInterval: 1.5, repeats: false) { _ in
+                        self.statusMessage = "Installata con successo!"
                         self.installedApps.append(newApp)
                         self.isInstalling = false
                         self.installationProgress = 1.0
                     }
-                }
-            } else {
-                DispatchQueue.main.async {
+                    
+                case .failure(let error):
                     self.isInstalling = false
-                    self.errorMessage = "Impossibile leggere il file IPA. Assicurati che sia un file valido."
+                    if let parserError = error as? IPAParserError {
+                        switch parserError {
+                        case .invalidArchive: self.errorMessage = "Il file non è un archivio valido (Zip corrotto)."
+                        case .infoPlistMissing: self.errorMessage = "Info.plist non trovato. L'IPA potrebbe essere malformata."
+                        case .plistReadError: self.errorMessage = "Errore durante la lettura dei metadati dell'app."
+                        default: self.errorMessage = "Errore sconosciuto nel parsing."
+                        }
+                    } else {
+                        self.errorMessage = "Errore di sistema: \(error.localizedDescription)"
+                    }
                 }
             }
         }
