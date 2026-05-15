@@ -1,35 +1,20 @@
 import Foundation
 
-// Struttura dei dati Anisette che il server ci restituisce
-struct AnisetteData: Codable {
-    let X_Apple_I_MD: String
-    let X_Apple_I_MD_M: String
-    let X_Apple_I_MD_LU: String
-    let X_Apple_I_MD_RINFO: String
-    let X_Apple_I_SRL_NO: String
-    
-    // Chiavi alternative (alcuni server usano nomi diversi)
-    enum CodingKeys: String, CodingKey {
-        case X_Apple_I_MD        = "X-Apple-I-MD"
-        case X_Apple_I_MD_M      = "X-Apple-I-MD-M"
-        case X_Apple_I_MD_LU     = "X-Apple-I-MD-LU"
-        case X_Apple_I_MD_RINFO  = "X-Apple-I-MD-RINFO"
-        case X_Apple_I_SRL_NO    = "X-Apple-I-SRL-NO"
-    }
-    
-    // Fallback con valori mock se il server non risponde
-    static var mock: AnisetteData {
-        AnisetteData(
-            X_Apple_I_MD: "AAAA",
-            X_Apple_I_MD_M: "AAAA",
-            X_Apple_I_MD_LU: UUID().uuidString.uppercased(),
-            X_Apple_I_MD_RINFO: "17106176",
-            X_Apple_I_SRL_NO: "0"
-        )
+// MARK: - Sessione "Relaxed" per saltare i controlli TLS/SSL
+class NetworkDelegate: NSObject, URLSessionDelegate {
+    func urlSession(_ session: URLSession, didReceive challenge: URLAuthenticationChallenge, completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
+        // Accetta tutto, utile per bypassare errori TLS su reti locali o proxy
+        if let trust = challenge.protectionSpace.serverTrust {
+            completionHandler(.useCredential, URLCredential(trust: trust))
+        } else {
+            completionHandler(.performDefaultHandling, nil)
+        }
     }
 }
 
 class AnisetteClient {
+    private static let session = URLSession(configuration: .default, delegate: NetworkDelegate(), delegateQueue: nil)
+
     static func fetchHeaders(from urlString: String) async throws -> AnisetteData {
         guard let url = URL(string: urlString.trimmingCharacters(in: .whitespaces)) else {
             throw URLError(.badURL)
@@ -38,20 +23,17 @@ class AnisetteClient {
         var request = URLRequest(url: url)
         request.timeoutInterval = 10
         
-        let (data, response) = try await URLSession.shared.data(for: request)
+        // Usiamo la sessione rilassata
+        let (data, response) = try await session.data(for: request)
         
         guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-            // Prova a usare valori mock come fallback
             return .mock
         }
         
-        // Il server potrebbe rispondere con chiavi in formato diverso
-        // Proviamo a decodificare direttamente
         if let anisette = try? JSONDecoder().decode(AnisetteData.self, from: data) {
             return anisette
         }
         
-        // Alcuni server restituiscono chiavi senza trattini
         if let json = try? JSONSerialization.jsonObject(with: data) as? [String: String] {
             return AnisetteData(
                 X_Apple_I_MD:       json["X-Apple-I-MD"]       ?? json["adi_pb"]      ?? "AAAA",
@@ -63,5 +45,31 @@ class AnisetteClient {
         }
         
         return .mock
+    }
+}
+
+struct AnisetteData: Codable {
+    let X_Apple_I_MD: String
+    let X_Apple_I_MD_M: String
+    let X_Apple_I_MD_LU: String
+    let X_Apple_I_MD_RINFO: String
+    let X_Apple_I_SRL_NO: String
+    
+    enum CodingKeys: String, CodingKey {
+        case X_Apple_I_MD        = "X-Apple-I-MD"
+        case X_Apple_I_MD_M      = "X-Apple-I-MD-M"
+        case X_Apple_I_MD_LU     = "X-Apple-I-MD-LU"
+        case X_Apple_I_MD_RINFO  = "X-Apple-I-MD-RINFO"
+        case X_Apple_I_SRL_NO    = "X-Apple-I-SRL-NO"
+    }
+    
+    static var mock: AnisetteData {
+        AnisetteData(
+            X_Apple_I_MD: "AAAA",
+            X_Apple_I_MD_M: "AAAA",
+            X_Apple_I_MD_LU: UUID().uuidString.uppercased(),
+            X_Apple_I_MD_RINFO: "17106176",
+            X_Apple_I_SRL_NO: "0"
+        )
     }
 }

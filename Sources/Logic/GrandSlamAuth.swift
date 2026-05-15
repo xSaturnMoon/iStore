@@ -1,39 +1,8 @@
 import Foundation
 
-struct AppleSession {
-    let appleId: String
-    let token: String
-    let expiry: Date
-}
-
-enum GrandSlamError: LocalizedError {
-    case invalidCredentials
-    case twoFactorRequired(ticket: String)
-    case serverError(Int, String)
-    case networkError(String)
-    case proxyUnreachable
-
-    var errorDescription: String? {
-        switch self {
-        case .invalidCredentials:
-            return "Apple ID o password errati.\n\nSe hai 2FA attiva, usa una Password App:\n1. Vai su appleid.apple.com\n2. Sicurezza → Password per le app\n3. Generane una e usala qui"
-        case .twoFactorRequired:
-            return "Inserisci il codice 2FA ricevuto."
-        case .serverError(let code, let msg):
-            return "Errore (\(code)): \(msg)"
-        case .networkError(let msg):
-            return "Errore di rete: \(msg)"
-        case .proxyUnreachable:
-            return "Proxy di autenticazione non raggiungibile.\n\nVerifica che l'URL del proxy sia configurato correttamente nelle Impostazioni."
-        }
-    }
-}
-
-// MARK: - GrandSlam Auth via Backend Proxy
-// Il protocollo Apple SRP-6a è troppo complesso da implementare on-device.
-// Usiamo un backend proxy (deployato su Railway) che gestisce l'auth per noi.
-
 class GrandSlamAuth {
+    // Usiamo la stessa sessione rilassata definita per bypassare errori TLS/SSL locali
+    private static let session = URLSession(configuration: .default, delegate: NetworkDelegate(), delegateQueue: nil)
     
     static func authenticate(
         appleId: String,
@@ -42,12 +11,10 @@ class GrandSlamAuth {
         anisetteBaseURL: String
     ) async throws -> AppleSession {
         
-        // L'URL del proxy è l'URL Anisette configurato in Settings
-        // (che dovrebbe puntare al nostro backend deployato su Railway)
         let baseURL = anisetteBaseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         
         guard let url = URL(string: "\(baseURL)/auth") else {
-            throw GrandSlamError.networkError("URL proxy non valido: \(baseURL)")
+            throw GrandSlamError.networkError("URL proxy non valido")
         }
         
         var request = URLRequest(url: url)
@@ -63,7 +30,8 @@ class GrandSlamAuth {
         
         let (data, response): (Data, URLResponse)
         do {
-            (data, response) = try await URLSession.shared.data(for: request)
+            // Usiamo la sessione con delegate per ignorare errori TLS
+            (data, response) = try await session.data(for: request)
         } catch {
             throw GrandSlamError.proxyUnreachable
         }
@@ -88,7 +56,6 @@ class GrandSlamAuth {
             )
             
         case 202:
-            // 2FA richiesta
             let ticket = json["ticket"] as? String ?? UUID().uuidString
             throw GrandSlamError.twoFactorRequired(ticket: ticket)
             
@@ -124,7 +91,7 @@ class GrandSlamAuth {
         
         let (data, response): (Data, URLResponse)
         do {
-            (data, response) = try await URLSession.shared.data(for: request)
+            (data, response) = try await session.data(for: request)
         } catch {
             throw GrandSlamError.proxyUnreachable
         }
