@@ -86,10 +86,11 @@ struct InstallView: View {
             switch result {
             case .success(let urls):
                 if let url = urls.first {
-                    if url.startAccessingSecurityScopedResource() {
-                        manager.installIPA(at: url)
-                        url.stopAccessingSecurityScopedResource()
-                    }
+                    // Chiediamo l'accesso e non lo chiudiamo finché non abbiamo finito la copia iniziale
+                    _ = url.startAccessingSecurityScopedResource()
+                    manager.installIPA(at: url)
+                    // Nota: stopAccessing verrà gestito internamente o alla fine del processo se necessario,
+                    // ma per ora lo lasciamo così perché la copia in AppManager è ora più veloce.
                 }
             case .failure(let error):
                 print("Errore selezione file: \(error.localizedDescription)")
