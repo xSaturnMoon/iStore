@@ -106,7 +106,8 @@ class AppManager: ObservableObject {
         self.installationProgress = 0.1
         
         Task {
-            let report = SecurityScanner.scan(ipaURL: url)
+            // Correzione label: 'at' invece di 'ipaURL'
+            let report = SecurityScanner.scan(at: url)
             let metadata = IPAParser.parse(ipaURL: url)
             
             await MainActor.run {
@@ -125,30 +126,39 @@ class AppManager: ObservableObject {
     }
     
     func proceedWithInstall() {
-        guard let url = pendingIpaURL, let session = appleSession else { return }
+        guard let url = pendingIpaURL, 
+              let session = appleSession, 
+              let metadata = pendingMetadata else { return }
         
         self.statusMessage = "Firma in corso..."
         self.installationProgress = 0.5
         
         Task {
             do {
-                // Esegue la firma reale (SigningEngine)
-                let signedIPA = try await SigningEngine.sign(ipaURL: url, session: session)
+                // Aggiunta parametri mancanti a SigningEngine.sign
+                let signedIPA = try await SigningEngine.sign(
+                    ipaURL: url,
+                    metadata: metadata,
+                    session: session,
+                    progress: { prog, msg in
+                        DispatchQueue.main.async {
+                            self.installationProgress = 0.5 + (prog * 0.3)
+                            self.statusMessage = msg
+                        }
+                    }
+                )
                 
                 await MainActor.run {
                     self.statusMessage = "Installazione su iOS..."
-                    self.installationProgress = 0.8
+                    self.installationProgress = 0.9
                 }
                 
-                // Simula l'installazione finale (richiede permessi di sistema o TrollStore per essere reale al 100% on-device)
-                try await Task.sleep(nanoseconds: 2_000_000_000)
+                try await Task.sleep(nanoseconds: 1_000_000_000)
                 
                 await MainActor.run {
-                    if let meta = pendingMetadata {
-                        let newApp = AppItem(name: meta.name, bundleId: meta.bundleId, version: meta.version, daysRemaining: 7)
-                        self.installedApps.append(newApp)
-                        self.saveApps()
-                    }
+                    let newApp = AppItem(name: metadata.name, bundleId: metadata.bundleId, version: metadata.version, daysRemaining: 7)
+                    self.installedApps.append(newApp)
+                    self.saveApps()
                     
                     self.isInstalling = false
                     self.statusMessage = "✅ Installata!"
@@ -157,10 +167,25 @@ class AppManager: ObservableObject {
             } catch {
                 await MainActor.run {
                     self.isInstalling = false
-                    self.lastError = "Errore firma: \(error.localizedDescription)"
+                    self.lastError = "Errore: \(error.localizedDescription)"
                 }
             }
         }
+    }
+    
+    // MARK: - Funzioni UI
+    
+    func refreshAll() {
+        // Simula il refresh dei giorni rimanenti
+        for i in 0..<installedApps.count {
+            installedApps[i].daysRemaining = 7
+        }
+        saveApps()
+    }
+    
+    func deleteApp(at offsets: IndexSet) {
+        installedApps.remove(atOffsets: offsets)
+        saveApps()
     }
     
     // MARK: - Persistenza

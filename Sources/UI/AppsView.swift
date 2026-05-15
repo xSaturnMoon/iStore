@@ -1,46 +1,37 @@
 import SwiftUI
 
 struct AppsView: View {
-    @ObservedObject var manager: AppManager
+    @ObservedObject var manager = AppManager.shared
     
     var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                // Header Statistiche
-                HStack(spacing: 15) {
-                    StatusCard(title: "Attive", value: "\(manager.installedApps.count)", icon: "checkmark.circle.fill", color: .green)
-                    StatusCard(title: "In Scadenza", value: "\(manager.installedApps.filter { $0.daysRemaining <= 2 }.count)", icon: "exclamationmark.triangle.fill", color: .orange)
-                }
-                .padding(.horizontal)
-                .padding(.top)
-                
-                // Lista App
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Le mie Applicazioni")
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
-                        .padding(.horizontal)
-                    
-                    ForEach(manager.installedApps) { app in
-                        AppCard(app: app)
-                            .contextMenu {
-                                Button(role: .destructive) {
-                                    if let index = manager.installedApps.firstIndex(where: { $0.id == app.id }) {
-                                        manager.deleteApp(at: IndexSet([index]))
-                                    }
-                                } label: {
-                                    Label("Elimina", systemImage: "trash")
-                                }
-                                
-                                Button {
-                                    // Refresh singola app
-                                } label: {
-                                    Label("Rinfresca Firma", systemImage: "arrow.clockwise")
-                                }
-                            }
+        NavigationStack {
+            ZStack {
+                if manager.installedApps.isEmpty {
+                    VStack(spacing: 20) {
+                        Image(systemName: "square.stack.3d.up.slash")
+                            .font(.system(size: 70))
+                            .foregroundStyle(.secondary)
+                        
+                        Text("Nessuna app installata")
+                            .font(.title3.bold())
+                        
+                        Text("Sposta i tuoi file IPA in iStore per iniziare.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
                     }
+                } else {
+                    List {
+                        ForEach(manager.installedApps) { app in
+                            AppCard(app: app)
+                                .listRowSeparator(.hidden)
+                                .listRowBackground(Color.clear)
+                        }
+                        .onDelete(perform: manager.deleteApp)
+                    }
+                    .listStyle(.plain)
                 }
             }
-            .padding(.bottom, 100)
+            .navigationTitle("Le mie App")
         }
     }
 }
@@ -50,68 +41,45 @@ struct AppCard: View {
     
     var body: some View {
         HStack(spacing: 15) {
-            // Icona App
+            // App Icon Placeholder
             ZStack {
-                RoundedRectangle(cornerRadius: 15)
-                    .fill(LinearGradient(colors: [Color.blue.opacity(0.3), Color.purple.opacity(0.3)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(.blue.gradient)
                     .frame(width: 60, height: 60)
                 
-                Image(systemName: app.iconName)
-                    .font(.system(size: 30))
-                    .foregroundStyle(.primary)
+                Text(String(app.name.prefix(1)).uppercased())
+                    .font(.title2.bold())
+                    .foregroundStyle(.white)
             }
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(app.name)
                     .font(.headline)
+                
                 Text(app.bundleId)
-                    .font(.caption2)
+                    .font(.caption)
                     .foregroundStyle(.secondary)
             }
             
             Spacer()
             
-            // Indicatore giorni rimanenti
             VStack(alignment: .trailing, spacing: 4) {
-                Text("\(app.daysRemaining)d")
-                    .font(.system(size: 16, weight: .bold, design: .monospaced))
-                    .foregroundStyle(app.daysRemaining <= 2 ? .red : .primary)
+                Text("\(app.daysRemaining)gg")
+                    .font(.caption.bold())
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(app.daysRemaining < 3 ? .red.opacity(0.2) : .green.opacity(0.2))
+                    .foregroundStyle(app.daysRemaining < 3 ? .red : .green)
+                    .clipShape(Capsule())
                 
-                Capsule()
-                    .fill(app.daysRemaining <= 2 ? Color.red.opacity(0.2) : Color.green.opacity(0.2))
-                    .frame(width: 40, height: 4)
+                Text(app.version)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             }
         }
         .padding()
-        .background(Color(UIColor.secondarySystemGroupedBackground).opacity(0.6))
         .background(.ultraThinMaterial)
-        .cornerRadius(20)
-        .padding(.horizontal)
-    }
-}
-
-struct StatusCard: View {
-    let title: String
-    let value: String
-    let icon: String
-    let color: Color
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Image(systemName: icon)
-                    .foregroundStyle(color)
-                Spacer()
-            }
-            Text(value)
-                .font(.system(size: 28, weight: .bold, design: .rounded))
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .padding()
-        .frame(maxWidth: .infinity)
-        .background(.ultraThinMaterial)
-        .cornerRadius(20)
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+        .padding(.horizontal, 4)
     }
 }
