@@ -17,17 +17,43 @@ class AppManager: ObservableObject {
     @Published var installationProgress: Double = 0.0
     
     init() {
-        // Dati di esempio per testare il design
-        loadSampleData()
+        // Inizialmente vuoto, caricherai tu le tue app vere
+        installedApps = []
     }
     
-    func loadSampleData() {
-        installedApps = [
-            AppItem(name: "iStore", bundleId: "com.xsaturnmoon.istore", version: "1.0", iconName: "shippingbox.fill", daysRemaining: 7, isSystemApp: true),
-            AppItem(name: "WhatsApp+", bundleId: "com.whatsapp.plus", version: "2.23", iconName: "message.fill", daysRemaining: 5),
-            AppItem(name: "YouTube Reborn", bundleId: "com.google.ios.youtube", version: "18.10", iconName: "play.rectangle.fill", daysRemaining: 3),
-            AppItem(name: "Instagram Rocket", bundleId: "com.burbn.instagram", version: "280.0", iconName: "camera.fill", daysRemaining: 1)
-        ]
+    func installIPA(at url: URL) {
+        isInstalling = true
+        installationProgress = 0.1
+        
+        // Eseguiamo il parsing in background per non bloccare la UI
+        DispatchQueue.global(qos: .userInitiated).async {
+            if let metadata = IPAParser.parse(at: url) {
+                DispatchQueue.main.async {
+                    self.installationProgress = 0.5
+                    
+                    // Qui aggiungiamo l'app reale alla lista
+                    let newApp = AppItem(
+                        name: metadata.name,
+                        bundleId: metadata.bundleId,
+                        version: metadata.version,
+                        iconName: "app.badge.fill", // In futuro estrarremo anche l'icona
+                        daysRemaining: 7
+                    )
+                    
+                    // Simuliamo la fine dell'installazione
+                    Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { _ in
+                        self.installedApps.append(newApp)
+                        self.isInstalling = false
+                        self.installationProgress = 1.0
+                    }
+                }
+            } else {
+                DispatchQueue.main.async {
+                    self.isInstalling = false
+                    // Qui potremmo mostrare un errore
+                }
+            }
+        }
     }
     
     func refreshAll() {

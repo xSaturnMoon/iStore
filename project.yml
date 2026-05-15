@@ -1,12 +1,18 @@
 name: iStore
 options:
   bundleIdPrefix: com.xsaturnmoon.istore
+packages:
+  ZIPFoundation:
+    url: https://github.com/weichsel/ZIPFoundation
+    from: 0.9.0
 targets:
   iStore:
     type: application
     platform: iOS
     deploymentTarget: "17.0"
     sources: [Sources]
+    dependencies:
+      - package: ZIPFoundation
     settings:
       INFOPLIST_FILE: Sources/Info.plist
       PRODUCT_BUNDLE_IDENTIFIER: com.xsaturnmoon.istore

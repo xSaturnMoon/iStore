@@ -74,21 +74,17 @@ struct InstallView: View {
             allowedContentTypes: [UTType(filenameExtension: "ipa")!],
             allowsMultipleSelection: false
         ) { result in
-            // Qui gestiamo il file selezionato
-            manager.isInstalling = true
-            simulateInstallation()
-        }
-    }
-    
-    func simulateInstallation() {
-        manager.installationProgress = 0
-        Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { timer in
-            manager.installationProgress += 0.02
-            if manager.installationProgress >= 1.0 {
-                timer.invalidate()
-                manager.isInstalling = false
-                // Aggiungiamo un'app finta al catalogo dopo il test
-                manager.installedApps.append(AppItem(name: "New App", bundleId: "com.test.app", version: "1.0", iconName: "app.badge.fill", daysRemaining: 7))
+            switch result {
+            case .success(let urls):
+                if let url = urls.first {
+                    // Chiediamo l'accesso al file (necessario per iOS)
+                    if url.startAccessingSecurityScopedResource() {
+                        manager.installIPA(at: url)
+                        url.stopAccessingSecurityScopedResource()
+                    }
+                }
+            case .failure(let error):
+                print("Errore selezione file: \(error.localizedDescription)")
             }
         }
     }
