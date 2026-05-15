@@ -1,207 +1,132 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @ObservedObject var manager: AppManager
-    @AppStorage("anisette_url") private var anisetteUrl = "https://anisette.sidecloud.xyz/"
+    @StateObject private var manager = AppManager.shared
     @AppStorage("apple_id") private var appleId = ""
-    @AppStorage("auto_refresh") private var autoRefresh = true
-    @State private var appPassword = ""
-    @State private var twoFACode = ""
-    @State private var showLogoutConfirm = false
+    @State private var password = ""
+    @State private var showing2FA = false
+    @State private var twoFactorCode = ""
     
     var body: some View {
-        Form {
-            
-            // MARK: - Account Apple
-            Section {
-                if manager.isAuthenticated {
-                    authenticatedRow
-                } else {
-                    loginForm
-                }
-            } header: {
-                Label("Account Apple", systemImage: "person.crop.circle")
-            }
-            
-            // MARK: - 2FA (appare solo quando richiesto)
-            if manager.isShowing2FA {
+        NavigationStack {
+            List {
                 Section {
-                    twoFAForm
+                    if manager.isLoggedIn {
+                        HStack {
+                            Image(systemName: "person.crop.circle.fill")
+                                .font(.system(size: 40))
+                                .foregroundStyle(.blue)
+                            
+                            VStack(alignment: .leading) {
+                                Text(appleId)
+                                    .font(.headline)
+                                Text("Sessione Attiva")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            
+                            Spacer()
+                            
+                            Button("Esci") {
+                                manager.logout()
+                            }
+                            .foregroundStyle(.red)
+                        }
+                        .padding(.vertical, 8)
+                    } else {
+                        VStack(spacing: 15) {
+                            TextField("Apple ID", text: $appleId)
+                                .textFieldStyle(.roundedBorder)
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled()
+                            
+                            SecureField("Password", text: $password)
+                                .textFieldStyle(.roundedBorder)
+                            
+                            if manager.isAuthenticating {
+                                ProgressView()
+                            } else {
+                                Button(action: login) {
+                                    Text("Accedi")
+                                        .fontWeight(.semibold)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 8)
+                                }
+                                .buttonStyle(.borderedProminent)
+                            }
+                        }
+                        .padding(.vertical, 10)
+                    }
                 } header: {
-                    Label("Verifica in due passaggi", systemImage: "lock.shield")
+                    Text("Account Apple")
                 } footer: {
-                    Text("Inserisci il codice a 6 cifre che hai ricevuto sui tuoi dispositivi Apple.")
+                    Text("Usa una 'Password per le app' se hai la 2FA attiva per evitare blocchi di sicurezza.")
                 }
-            }
-            
-            // MARK: - Server Anisette
-            Section {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("URL Server Anisette")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    TextField("https://...", text: $anisetteUrl)
-                        .font(.system(.body, design: .monospaced))
-                        .autocorrectionDisabled()
-                        .textInputAutocapitalization(.never)
-                        .keyboardType(.URL)
-                }
-            } header: {
-                Label("Configurazione Server", systemImage: "server.rack")
-            } footer: {
-                Text("Il server Anisette fornisce i dati di autenticazione necessari ad Apple. Usa un server pubblico o il tuo.")
-            }
-            
-            // MARK: - Automazione
-            Section {
-                Toggle(isOn: $autoRefresh) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("Refresh Automatico")
-                        Text("Rinnova le firme ogni 6 giorni")
-                            .font(.caption)
+                
+                Section {
+                    HStack {
+                        Text("Versione")
+                        Spacer()
+                        Text("1.0.0 (Beta)")
                             .foregroundStyle(.secondary)
                     }
+                } header: {
+                    Text("Informazioni")
                 }
-            } header: {
-                Label("Automazione", systemImage: "arrow.clockwise.circle")
             }
-            
-            // MARK: - Info
-            Section {
-                VStack(spacing: 6) {
-                    Text("iStore")
-                        .font(.headline)
-                    Text("v1.0.0 — by xSaturnMoon")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text("Build via GitHub Actions + Xcode 26")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
+            .navigationTitle("Impostazioni")
+            .sheet(isPresented: $showing2FA) {
+                twoFactorSheet
+            }
+            .alert("Errore", isPresented: .init(get: { manager.lastError != nil }, set: { _ in manager.lastError = nil })) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                if let error = manager.lastError {
+                    Text(error)
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
-                .listRowBackground(Color.clear)
             }
-        }
-        .alert("Errore", isPresented: Binding(
-            get: { manager.errorMessage != nil },
-            set: { _ in manager.errorMessage = nil }
-        )) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(manager.errorMessage ?? "")
-        }
-        .confirmationDialog("Esci dall'account?", isPresented: $showLogoutConfirm, titleVisibility: .visible) {
-            Button("Esci", role: .destructive) { manager.logout() }
-            Button("Annulla", role: .cancel) {}
-        } message: {
-            Text("Dovrai effettuare di nuovo l'accesso per installare nuove app.")
         }
     }
     
-    // MARK: - Subviews
-    
-    private var authenticatedRow: some View {
-        HStack(spacing: 14) {
-            ZStack {
-                Circle()
-                    .fill(.green.opacity(0.15))
-                    .frame(width: 44, height: 44)
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
-                    .font(.title2)
-            }
-            
-            VStack(alignment: .leading, spacing: 3) {
-                Text(manager.appleSession?.appleId ?? appleId)
-                    .font(.subheadline.bold())
-                if let expiry = manager.appleSession?.expiry {
-                    Text("Sessione valida fino a \(expiry.formatted(date: .abbreviated, time: .omitted))")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            
-            Spacer()
-            
-            Button {
-                showLogoutConfirm = true
-            } label: {
-                Image(systemName: "rectangle.portrait.and.arrow.right")
-                    .foregroundStyle(.red)
-            }
-        }
-        .padding(.vertical, 4)
-    }
-    
-    private var loginForm: some View {
-        Group {
-            HStack {
-                Image(systemName: "envelope.fill")
-                    .foregroundStyle(.blue)
-                    .frame(width: 24)
-                TextField("Apple ID (email)", text: $appleId)
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.never)
-                    .keyboardType(.emailAddress)
-            }
-            
-            HStack {
-                Image(systemName: "lock.fill")
-                    .foregroundStyle(.blue)
-                    .frame(width: 24)
-                SecureField("Password o Password App", text: $appPassword)
-            }
-            
-            Button {
-                manager.login(appleId: appleId, password: appPassword, anisetteUrl: anisetteUrl)
-            } label: {
-                HStack {
-                    Spacer()
-                    if manager.statusMessage.contains("Connessione") {
-                        ProgressView().tint(.white)
-                    } else {
-                        Image(systemName: "arrow.right.circle.fill")
-                        Text("Accedi con Apple ID")
-                            .bold()
-                    }
-                    Spacer()
-                }
-                .foregroundStyle(.white)
-                .padding(.vertical, 6)
-            }
-            .listRowBackground(Color.blue)
-            .disabled(appleId.isEmpty || appPassword.isEmpty)
-        }
-    }
-    
-    private var twoFAForm: some View {
-        Group {
-            HStack {
-                Image(systemName: "key.fill")
-                    .foregroundStyle(.orange)
-                    .frame(width: 24)
-                TextField("Codice a 6 cifre", text: $twoFACode)
+    private var twoFactorSheet: some View {
+        NavigationStack {
+            VStack(spacing: 20) {
+                Text("Verifica Dispositivo")
+                    .font(.title2.bold())
+                
+                Text("Inserisci il codice a 6 cifre inviato ai tuoi dispositivi Apple.")
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.secondary)
+                
+                TextField("000000", text: $twoFactorCode)
+                    .font(.system(size: 40, design: .monospaced))
+                    .multilineTextAlignment(.center)
                     .keyboardType(.numberPad)
-                    .font(.system(.body, design: .monospaced))
-            }
-            
-            Button {
-                manager.submit2FA(code: twoFACode, appleId: appleId, anisetteUrl: anisetteUrl)
-                twoFACode = ""
-            } label: {
-                HStack {
-                    Spacer()
-                    Image(systemName: "checkmark.circle.fill")
-                    Text("Verifica Codice")
-                        .bold()
-                    Spacer()
+                    .textFieldStyle(.plain)
+                
+                Button("Verifica") {
+                    Task {
+                        await manager.verify2FA(code: twoFactorCode)
+                        showing2FA = false
+                    }
                 }
-                .foregroundStyle(.white)
-                .padding(.vertical, 6)
+                .buttonStyle(.borderedProminent)
+                .disabled(twoFactorCode.count < 6)
+                
+                Spacer()
             }
-            .listRowBackground(Color.orange)
-            .disabled(twoFACode.count < 6)
+            .padding()
+            .navigationBarItems(trailing: Button("Annulla") { showing2FA = false })
+        }
+        .presentationDetents([.medium])
+    }
+    
+    private func login() {
+        Task {
+            await manager.login(appleId: appleId, password: password)
+            if manager.lastError?.contains("2FA") == true || manager.lastError?.contains("due fattori") == true {
+                showing2FA = true
+            }
         }
     }
 }
